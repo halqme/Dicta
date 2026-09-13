@@ -36,12 +36,10 @@ struct PrivacySettingsPane: View {
                         .foregroundStyle(.secondary)
                 }
 
-                LabeledContent("") {
-                    Button("Clear History…", role: .destructive) {
-                        confirmingHistoryClear = true
-                    }
-                    .disabled(environment.appModel.history.isEmpty)
+                Button("Clear History…", role: .destructive) {
+                    confirmingHistoryClear = true
                 }
+                .disabled(environment.appModel.history.isEmpty)
             }
             .formStyle(.columns)
 
