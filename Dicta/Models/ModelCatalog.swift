@@ -170,14 +170,14 @@ nonisolated struct ASRModelRoleDetail: Codable, Hashable, Sendable {
 ///
 /// The remote manifest describes FluidAudio's wider model universe. This filter is the safety
 /// boundary that prevents a new catalog entry from becoming selectable until this binary has an
-/// adapter for its backend/variant.
+/// adapter for its backend/variant. Adding an entry to `models.json` never makes an unsupported
+/// backend executable by itself.
 nonisolated struct ModelRuntimeCapabilities: Sendable {
     static let current = Self()
 
     private static let parakeetVariants: Set<String> = [
         "v2",
         "v3",
-        "tdt-ctc-110m",
         "tdt-ja",
     ]
 
@@ -185,14 +185,6 @@ nonisolated struct ModelRuntimeCapabilities: Sendable {
         "parakeet-eou-160ms",
         "parakeet-eou-320ms",
         "parakeet-eou-1280ms",
-        "nemotron-560ms",
-        "nemotron-1120ms",
-        "nemotron-2240ms",
-        "parakeet-unified-320ms",
-        "parakeet-unified-640ms",
-        "parakeet-unified-1120ms",
-        "parakeet-unified-2080ms",
-        "parakeet-unified-offline-15s",
     ]
 
     func supports(_ option: ASRModelOption) -> Bool {
