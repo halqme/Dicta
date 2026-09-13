@@ -7,9 +7,6 @@ struct SettingsView: View {
     private var selectedPane = SettingsPane.general
 
     var body: some View {
-        @Bindable var settings = environment.settings
-        let modelManagement = environment.modelManagement
-
         TabView(selection: $selectedPane) {
             GeneralSettingsPane(environment: environment)
                 .tabItem {
@@ -29,17 +26,7 @@ struct SettingsView: View {
                 }
                 .tag(SettingsPane.privacy)
         }
-        .frame(width: 540)
-        .onChange(of: settings.previewModelID) {
-            if !settings.previewModelID.isEmpty {
-                modelManagement.installPreview(modelID: settings.previewModelID)
-            }
-        }
-        .onChange(of: settings.finalModelID) {
-            if !settings.finalModelID.isEmpty {
-                modelManagement.installFinal(modelID: settings.finalModelID)
-            }
-        }
+        .frame(width: 680)
         .onAppear {
             environment.windowPresenter.settingsDidAppear()
         }
