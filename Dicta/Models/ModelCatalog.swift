@@ -1,10 +1,6 @@
 import Foundation
 
-/// Open language code used by the remote model catalog.
-///
-/// Dicta's user-facing input languages are intentionally a smaller closed set. Keeping catalog
-/// language codes open means a newer manifest can describe languages an older Dicta binary does
-/// not expose without making the whole manifest undecodable.
+/// Open language code used by the model catalog. Dicta may decode languages it does not expose.
 nonisolated struct ModelLanguageCode: RawRepresentable, Codable, Hashable, Sendable {
     let rawValue: String
 
@@ -13,8 +9,7 @@ nonisolated struct ModelLanguageCode: RawRepresentable, Codable, Hashable, Senda
     }
 
     init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        rawValue = try container.decode(String.self)
+        rawValue = try decoder.singleValueContainer().decode(String.self)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -26,8 +21,7 @@ nonisolated struct ModelLanguageCode: RawRepresentable, Codable, Hashable, Senda
     static let english = Self(rawValue: "en")
 }
 
-/// Qualitative, catalog-maintained comparison values. These are deliberately coarse rather than
-/// pretending that benchmark numbers from different hardware/datasets are directly comparable.
+/// Coarse relative ratings for choosing between models. They are not benchmark measurements.
 nonisolated struct ASRModelPerformance: Codable, Hashable, Sendable {
     let speed: Int
     let accuracy: Int
@@ -60,9 +54,6 @@ nonisolated struct ASRModelPerformance: Codable, Hashable, Sendable {
 }
 
 /// Runtime-independent backend information for one model definition.
-///
-/// Backend identifiers are open strings. A remote catalog may therefore preserve definitions for
-/// a newer Dicta/FluidAudio combination while this binary simply hides entries it cannot execute.
 nonisolated struct ASRModelBackend: Codable, Hashable, Sendable {
     struct Kind: RawRepresentable, Codable, Hashable, Sendable {
         let rawValue: String
@@ -72,8 +63,7 @@ nonisolated struct ASRModelBackend: Codable, Hashable, Sendable {
         }
 
         init(from decoder: Decoder) throws {
-            let container = try decoder.singleValueContainer()
-            rawValue = try container.decode(String.self)
+            rawValue = try decoder.singleValueContainer().decode(String.self)
         }
 
         func encode(to encoder: Encoder) throws {
@@ -87,7 +77,6 @@ nonisolated struct ASRModelBackend: Codable, Hashable, Sendable {
     }
 
     let kind: Kind
-    /// Backend-specific identifier. Its meaning belongs to the adapter named by `kind`.
     let variantID: String?
 
     init(kind: Kind, variantID: String? = nil) {
@@ -119,8 +108,6 @@ nonisolated struct ASRModelOption: Identifiable, Hashable, Sendable, Codable {
     let id: String
     let name: String
     let languages: Set<ModelLanguageCode>
-    /// One physical model can be exposed in more than one app role. Keeping role-specific details
-    /// here avoids duplicating the backend definition when preview and final share a checkpoint.
     let roleDetails: [ASRModelRoleDetail]
     let backend: ASRModelBackend
     let defaultRoles: Set<Role>
@@ -166,45 +153,62 @@ nonisolated struct ASRModelRoleDetail: Codable, Hashable, Sendable {
     let detail: String
 }
 
-/// Capabilities compiled into this Dicta binary.
+/// Capabilities actually implemented by this Dicta/FluidAudio binary.
 ///
-/// The remote manifest describes FluidAudio's wider model universe. This filter is the safety
-/// boundary that prevents a new catalog entry from becoming selectable until this binary has an
-/// adapter for its backend/variant. Adding an entry to `models.json` never makes an unsupported
-/// backend executable by itself.
+/// The manifest may contain more models than this set. Such entries remain decodable but are not
+/// shown in Settings until the binary has a compatible adapter.
 nonisolated struct ModelRuntimeCapabilities: Sendable {
     static let current = Self()
 
     private static let parakeetVariants: Set<String> = [
         "v2",
         "v3",
+        "tdt-ctc-110m",
         "tdt-ja",
     ]
 
-    private static let streamingVariants: Set<String> = [
+    private static let previewStreamingVariants: Set<String> = [
         "parakeet-eou-160ms",
         "parakeet-eou-320ms",
         "parakeet-eou-1280ms",
     ]
 
-    func supports(_ option: ASRModelOption) -> Bool {
+    private static let finalStreamingVariants: Set<String> = [
+        "parakeet-eou-160ms",
+        "parakeet-eou-320ms",
+        "parakeet-eou-1280ms",
+        "nemotron-560ms",
+        "nemotron-1120ms",
+        "nemotron-2240ms",
+        "parakeet-unified-320ms",
+        "parakeet-unified-640ms",
+        "parakeet-unified-1120ms",
+        "parakeet-unified-2080ms",
+        "parakeet-unified-offline-15s",
+    ]
+
+    func supports(_ option: ASRModelOption, role: ASRModelOption.Role) -> Bool {
+        guard option.supports(role) else { return false }
+
         if option.backend.kind == .cohereTranscribe {
-            return option.backend.variantID == nil
+            return role == .final && option.backend.variantID == nil
         }
         if option.backend.kind == .parakeet {
-            return option.backend.variantID.map(Self.parakeetVariants.contains) ?? false
+            return role == .final
+                && (option.backend.variantID.map(Self.parakeetVariants.contains) ?? false)
         }
-        if option.backend.kind == .streaming {
-            return option.backend.variantID.map(Self.streamingVariants.contains) ?? false
+        if option.backend.kind == .streaming, let variantID = option.backend.variantID {
+            switch role {
+            case .preview:
+                return Self.previewStreamingVariants.contains(variantID)
+            case .final:
+                return Self.finalStreamingVariants.contains(variantID)
+            }
         }
         return false
     }
 }
 
-/// Compatibility catalog used by the UI and ASR adapter.
-///
-/// Definitions come from JSON rather than Swift. A last-known-good remote manifest can replace the
-/// bundled manifest on the next launch without changing consumers of this type.
 nonisolated struct ModelCatalog: Codable, Sendable {
     static let supportedSchemaVersion = 1
 
@@ -222,8 +226,6 @@ nonisolated struct ModelCatalog: Codable, Sendable {
         self.models = models
     }
 
-    /// Bundled fallback used by tests and explicit service construction. Normal app startup goes
-    /// through `ModelCatalogLoader.loadStartupCatalog()` so a cached remote catalog can win.
     static var builtIn: Self {
         ModelCatalogLoader.loadBundledCatalog()
     }
@@ -237,11 +239,11 @@ nonisolated struct ModelCatalog: Codable, Sendable {
     }
 
     var runnablePreviewModels: [ASRModelOption] {
-        previewModels.filter(ModelRuntimeCapabilities.current.supports)
+        previewModels.filter { ModelRuntimeCapabilities.current.supports($0, role: .preview) }
     }
 
     var runnableFinalModels: [ASRModelOption] {
-        finalModels.filter(ModelRuntimeCapabilities.current.supports)
+        finalModels.filter { ModelRuntimeCapabilities.current.supports($0, role: .final) }
     }
 
     func model(id: String) -> ASRModelOption? {
@@ -336,10 +338,7 @@ nonisolated struct ModelCatalog: Codable, Sendable {
         }
     }
 
-    private static func validate(
-        schemaVersion: Int,
-        models: [ASRModelOption]
-    ) throws {
+    private static func validate(schemaVersion: Int, models: [ASRModelOption]) throws {
         guard schemaVersion == supportedSchemaVersion else {
             throw ValidationError.unsupportedSchemaVersion(schemaVersion)
         }
@@ -347,6 +346,7 @@ nonisolated struct ModelCatalog: Codable, Sendable {
 
         var modelIDs = Set<String>()
         var defaultModelIDs: [ASRModelOption.Role: String] = [:]
+
         for model in models {
             guard !model.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 throw ValidationError.emptyModelID
@@ -357,10 +357,10 @@ nonisolated struct ModelCatalog: Codable, Sendable {
             guard !model.languages.isEmpty else {
                 throw ValidationError.emptyLanguages(model.id)
             }
-
             guard !model.roleDetails.isEmpty else {
                 throw ValidationError.emptyRoleDetails(model.id)
             }
+
             var roles = Set<ASRModelOption.Role>()
             for roleDetail in model.roleDetails {
                 guard roles.insert(roleDetail.role).inserted else {
@@ -382,23 +382,22 @@ nonisolated struct ModelCatalog: Codable, Sendable {
             }
 
             guard !model.backend.kind.rawValue
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .isEmpty
+                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else {
                 throw ValidationError.emptyBackendKind(model.id)
             }
+
             if let variantID = model.backend.variantID,
                variantID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 throw ValidationError.backendVariantRequired(model.id)
             }
 
             let isCohere = model.backend.kind == .cohereTranscribe
-            let isParakeet = model.backend.kind == .parakeet
-            let isStreaming = model.backend.kind == .streaming
+            let needsVariant = model.backend.kind == .parakeet || model.backend.kind == .streaming
             if isCohere, model.backend.variantID != nil {
                 throw ValidationError.cohereBackendCannotHaveVariant(model.id)
             }
-            if (isParakeet || isStreaming), model.backend.variantID == nil {
+            if needsVariant, model.backend.variantID == nil {
                 throw ValidationError.backendVariantRequired(model.id)
             }
 
