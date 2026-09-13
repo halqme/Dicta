@@ -85,7 +85,7 @@ private extension InputLanguage {
 /// Installation and local-only loading for FluidAudio's standalone ASR managers that sit outside
 /// `AsrManager`, `CoherePipeline`, and `StreamingAsrManager`.
 enum AdditionalASRAdapter {
-    static let supportedBackendKinds: Set<String> = [
+    nonisolated static let supportedBackendKinds: Set<String> = [
         "sensevoice",
         "paraformer",
         "nemotron-multilingual",
@@ -110,7 +110,7 @@ enum AdditionalASRAdapter {
         }
     }
 
-    static func preflight(_ option: ASRModelOption) throws {
+    nonisolated static func preflight(_ option: ASRModelOption) throws {
         switch option.backend.kind.rawValue {
         case "sensevoice":
             let directory = MLModelConfigurationUtils.defaultModelsDirectory(for: .senseVoiceSmall)
@@ -184,7 +184,7 @@ enum AdditionalASRAdapter {
         }
     }
 
-    static func isInstalled(_ option: ASRModelOption) -> Bool {
+    nonisolated static func isInstalled(_ option: ASRModelOption) -> Bool {
         switch option.backend.kind.rawValue {
         case "sensevoice":
             let directory = MLModelConfigurationUtils.defaultModelsDirectory(for: .senseVoiceSmall)
@@ -211,7 +211,7 @@ enum AdditionalASRAdapter {
         }
     }
 
-    static func storageDirectory(for option: ASRModelOption) -> URL? {
+    nonisolated static func storageDirectory(for option: ASRModelOption) -> URL? {
         switch option.backend.kind.rawValue {
         case "sensevoice":
             MLModelConfigurationUtils.defaultModelsDirectory(for: .senseVoiceSmall)
@@ -225,7 +225,9 @@ enum AdditionalASRAdapter {
         }
     }
 
-    private static func senseVoicePrecision(for option: ASRModelOption) -> SenseVoiceEncoderPrecision {
+    nonisolated private static func senseVoicePrecision(
+        for option: ASRModelOption
+    ) -> SenseVoiceEncoderPrecision {
         switch option.backend.variantID {
         case "int8": .int8
         case "fp32": .fp32
@@ -233,11 +235,15 @@ enum AdditionalASRAdapter {
         }
     }
 
-    private static func paraformerPrecision(for option: ASRModelOption) -> ParaformerPrecision {
+    nonisolated private static func paraformerPrecision(
+        for option: ASRModelOption
+    ) -> ParaformerPrecision {
         option.backend.variantID == "int8" ? .int8 : .fp16
     }
 
-    private static func nemotronChunkMilliseconds(for option: ASRModelOption) throws -> Int {
+    nonisolated private static func nemotronChunkMilliseconds(
+        for option: ASRModelOption
+    ) throws -> Int {
         guard let raw = option.backend.variantID else {
             throw ASRServiceError.unsupportedFinalModel(modelID: option.id)
         }
@@ -248,13 +254,15 @@ enum AdditionalASRAdapter {
         return value
     }
 
-    private static func nemotronMultilingualDirectory(chunkMs: Int) -> URL {
+    nonisolated private static func nemotronMultilingualDirectory(chunkMs: Int) -> URL {
         MLModelConfigurationUtils.defaultModelsDirectory(for: .nemotronMultilingual)
             .appendingPathComponent("multilingual", isDirectory: true)
             .appendingPathComponent("\(chunkMs)ms", isDirectory: true)
     }
 
-    private static func nemotronMultilingualFilesAreComplete(at directory: URL) -> Bool {
+    nonisolated private static func nemotronMultilingualFilesAreComplete(
+        at directory: URL
+    ) -> Bool {
         let fm = FileManager.default
 
         func exists(_ name: String) -> Bool {
