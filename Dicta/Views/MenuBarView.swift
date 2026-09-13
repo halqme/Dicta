@@ -32,7 +32,7 @@ struct MenuBarView: View {
 
         Divider()
 
-        Button("Open Fallback Editor") {
+        Button("Fallback Editor") {
             environment.controller.showFallbackEditor()
         }
 
@@ -64,7 +64,7 @@ struct MenuBarView: View {
 
     private static func menuTitle(for text: String) -> String {
         let singleLine = text.replacingOccurrences(of: "\n", with: " ")
-        if singleLine.count <= 42 { return singleLine }
-        return String(singleLine.prefix(39)) + "…"
+        if singleLine.count <= 30 { return singleLine }
+        return String(singleLine.prefix(27)) + "…"
     }
 }
