@@ -44,15 +44,22 @@ For distribution, use the normal Developer ID signing/notarization workflow rath
 
 Microphone permission is requested by macOS on the first recording.
 
-## Current model policy
+## Model catalog
 
-- Japanese final: Cohere Transcribe or Parakeet TDT Japanese.
-- English final: Cohere Transcribe, Parakeet TDT v2/v3, or the small Parakeet EOU streaming model used as a final pass.
-- English preview: Parakeet EOU 120M (160/320/1280 ms).
-- Japanese preview: disabled in FluidAudio 0.15.7 because the available Japanese streaming option is not a small always-resident model.
+Model metadata lives in `Dicta/Resources/models.json`, not in Swift source. The manifest describes model IDs, supported language codes, preview/final roles, backend metadata, defaults, and coarse 1–5 speed/accuracy ratings.
+
+At launch Dicta uses the newer of the bundled manifest and the last-known-good cached manifest. It then checks the canonical `models.json` on this repository and atomically caches a newer valid `revision` for the next launch. A malformed, unsupported-schema, stale, or unavailable remote manifest never replaces the working catalog.
+
+The catalog is deliberately broader than the current Dicta UI. It can describe FluidAudio models and languages that this binary does not yet have an adapter for. `ModelRuntimeCapabilities` filters Settings to backend/variant combinations this Dicta build can actually execute, so publishing a catalog entry cannot create a selectable-but-broken model.
+
+Dicta itself currently exposes Japanese and English as input languages. Catalog language codes are open strings, so adding French, German, Chinese, or other model capabilities does not require older app binaries to understand or expose those languages.
+
+Speed and accuracy values are qualitative relative ratings intended for model selection. They are not presented as directly comparable benchmark measurements across hardware, languages, or datasets.
 
 Preview text is never inserted. Only a final pass can be delivered to another app.
 
 ## Privacy
 
-Recorded PCM is kept only in memory until its finalization job completes. Transcript history is local JSON under Dicta's Application Support directory and is pruned to 100 items / 7 days. No audio history is persisted.
+ASR inference is local. Recorded PCM is kept only in memory until its finalization job completes. Transcript history is local JSON under Dicta's Application Support directory and is pruned to 100 items / 7 days. No audio history is persisted.
+
+Dicta does make network requests for two narrow purposes: checking the public model-catalog metadata on this GitHub repository at launch, and downloading a model from FluidAudio's model source when the user explicitly installs it in Settings. Recorded audio and transcript text are not sent with the catalog request.

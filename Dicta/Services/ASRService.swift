@@ -100,11 +100,12 @@ actor ASRService {
     func installPreviewModel(modelID: String) async throws {
         guard activePreviewSessionModelID == nil else { throw ASRServiceError.previewModelBusy }
         guard let option = modelCatalog.previewOption(id: modelID),
-              let variant = Self.streamingVariant(from: option)
+              let variant = Self.streamingVariant(from: option),
+              variant.engineFamily == .parakeetEou
         else {
             throw ASRServiceError.unsupportedPreviewModel(
                 modelID: modelID,
-                supportedModelIDs: modelCatalog.previewModels.map(\.id)
+                supportedModelIDs: modelCatalog.runnablePreviewModels.map(\.id)
             )
         }
 
@@ -197,11 +198,12 @@ actor ASRService {
             throw ASRServiceError.previewModelBusy
         }
         guard let option = modelCatalog.previewOption(id: modelID),
-              let previewVariant = Self.streamingVariant(from: option)
+              let previewVariant = Self.streamingVariant(from: option),
+              previewVariant.engineFamily == .parakeetEou
         else {
             throw ASRServiceError.unsupportedPreviewModel(
                 modelID: modelID,
-                supportedModelIDs: modelCatalog.previewModels.map(\.id)
+                supportedModelIDs: modelCatalog.runnablePreviewModels.map(\.id)
             )
         }
         guard loadedPreviewModelID != modelID || loadedPreviewModel == nil else { return }
@@ -262,7 +264,7 @@ actor ASRService {
             }
             let directory = MLModelConfigurationUtils.defaultModelsDirectory(for: variant.repo)
             try Self.requireInstalled(
-                ModelNames.ParakeetEOU.requiredModels,
+                Self.streamingRequiredFiles(for: variant),
                 in: directory,
                 modelID: modelID
             )
@@ -500,10 +502,9 @@ actor ASRService {
         }
     }
 
-    /// Verify all required files before invoking FluidAudio's convenience loader so runtime
-    /// preparation cannot turn into a network fetch. Avoid mutating ModelHub.offlineMode: it is
-    /// process-global and would create a race with a Settings download while this actor is
-    /// suspended.
+    /// Load only from FluidAudio's local cache. The no-argument manager loaders are intentionally
+    /// reserved for Settings installation because some of them can purge and re-download a bad
+    /// cache. Dictation preparation must never turn into a network operation.
     private func loadStreamingManagerLocally(
         _ manager: any StreamingAsrManager,
         variant: StreamingModelVariant,
@@ -511,15 +512,42 @@ actor ASRService {
     ) async throws {
         let directory = MLModelConfigurationUtils.defaultModelsDirectory(for: variant.repo)
         try Self.requireInstalled(
-            ModelNames.ParakeetEOU.requiredModels,
+            Self.streamingRequiredFiles(for: variant),
             in: directory,
             modelID: modelID
         )
 
         do {
-            try await manager.loadModels()
+            switch variant.engineFamily {
+            case .parakeetEou:
+                guard let typedManager = manager as? StreamingEouAsrManager else {
+                    throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                }
+                try await typedManager.loadModels(from: directory)
+
+            case .nemotron:
+                guard let typedManager = manager as? StreamingNemotronAsrManager else {
+                    throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                }
+                try await typedManager.loadModels(from: directory)
+
+            case .parakeetUnified:
+                if variant == .parakeetUnifiedOffline15s {
+                    guard let typedManager = manager as? UnifiedAsrManager else {
+                        throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                    }
+                    try await typedManager.loadModels(from: directory)
+                } else {
+                    guard let typedManager = manager as? StreamingUnifiedAsrManager else {
+                        throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                    }
+                    try await typedManager.loadModels(from: directory)
+                }
+            }
         } catch is CancellationError {
             throw CancellationError()
+        } catch let error as ASRServiceError {
+            throw error
         } catch {
             throw ASRServiceError.modelNotInstalled(modelID: modelID)
         }
@@ -560,12 +588,49 @@ actor ASRService {
     private nonisolated static func streamingVariant(
         from option: ASRModelOption
     ) -> StreamingModelVariant? {
-        guard option.backend.kind == .streaming else { return nil }
-        guard let variantID = option.backend.variantID,
-              let variant = StreamingModelVariant(rawValue: variantID),
-              variant.engineFamily == .parakeetEou
+        guard option.backend.kind == .streaming,
+              let variantID = option.backend.variantID
         else { return nil }
-        return variant
+        return StreamingModelVariant(rawValue: variantID)
+    }
+
+    private nonisolated static func streamingRequiredFiles(
+        for variant: StreamingModelVariant
+    ) -> Set<String> {
+        switch variant.engineFamily {
+        case .parakeetEou:
+            return ModelNames.ParakeetEOU.requiredModels
+
+        case .nemotron:
+            // metadata.json and decoder_joint.mlmodelc are optional in FluidAudio's loader.
+            return [
+                ModelNames.NemotronStreaming.encoderInt8File,
+                ModelNames.NemotronStreaming.decoderFile,
+                ModelNames.NemotronStreaming.jointFile,
+                ModelNames.NemotronStreaming.tokenizer,
+            ]
+
+        case .parakeetUnified:
+            if variant == .parakeetUnifiedOffline15s {
+                return [
+                    ModelNames.ParakeetUnified.offlineEncoderInt8File,
+                    ModelNames.ParakeetUnified.decoderFile,
+                    ModelNames.ParakeetUnified.jointDecisionFile,
+                    ModelNames.ParakeetUnified.vocab,
+                ]
+            }
+
+            let config = variant.unifiedConfig ?? UnifiedConfig()
+            return [
+                ModelNames.ParakeetUnified.streamingEncoderFile(
+                    precision: .int8,
+                    contextSuffix: config.contextSuffix
+                ),
+                ModelNames.ParakeetUnified.decoderFile,
+                ModelNames.ParakeetUnified.jointDecisionFile,
+                ModelNames.ParakeetUnified.vocab,
+            ]
+        }
     }
 
     private nonisolated static func parakeetVersion(
@@ -578,6 +643,7 @@ actor ASRService {
         switch versionID {
         case "v2": return .v2
         case "v3": return .v3
+        case "tdt-ctc-110m": return .tdtCtc110m
         case "tdt-ja": return .tdtJa
         default: return nil
         }

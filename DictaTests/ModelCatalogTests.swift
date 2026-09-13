@@ -6,6 +6,8 @@ import Testing
 func modelCatalogDecodesJSONManifest() throws {
     let json = """
     {
+      "schemaVersion": 1,
+      "revision": 7,
       "models": [
         {
           "id": "json-preview",
@@ -21,12 +23,16 @@ func modelCatalogDecodesJSONManifest() throws {
             "kind": "streaming",
             "variantID": "parakeet-eou-160ms"
           },
-          "defaultRoles": ["preview"]
+          "defaultRoles": ["preview"],
+          "performance": {
+            "speed": 5,
+            "accuracy": 3
+          }
         },
         {
           "id": "json-final",
           "name": "JSON Final",
-          "languages": ["ja", "en"],
+          "languages": ["ja", "en", "fr"],
           "roleDetails": [
             {
               "role": "final",
@@ -36,7 +42,11 @@ func modelCatalogDecodesJSONManifest() throws {
           "backend": {
             "kind": "cohere-transcribe"
           },
-          "defaultRoles": ["final"]
+          "defaultRoles": ["final"],
+          "performance": {
+            "speed": 2,
+            "accuracy": 5
+          }
         }
       ]
     }
@@ -44,13 +54,17 @@ func modelCatalogDecodesJSONManifest() throws {
 
     let catalog = try JSONDecoder().decode(ModelCatalog.self, from: Data(json.utf8))
 
+    #expect(catalog.schemaVersion == 1)
+    #expect(catalog.revision == 7)
     #expect(catalog.previewModels.map(\.id) == ["json-preview"])
     #expect(catalog.finalModels.map(\.id) == ["json-final"])
     #expect(Set(catalog.models.map(\.id)).count == catalog.models.count)
     #expect(catalog.previewModels[0].backend.kind == .streaming)
     #expect(catalog.previewModels[0].backend.variantID == "parakeet-eou-160ms")
     #expect(catalog.previewModels[0].detail(for: .preview) == "A preview model supplied by a manifest")
+    #expect(catalog.previewModels[0].performance?.speed == 5)
     #expect(catalog.finalModels[0].backend == .cohereTranscribe)
+    #expect(catalog.finalModels[0].languages.contains(ModelLanguageCode(rawValue: "fr")))
     #expect(catalog.defaultPreviewOption(for: .english)?.id == "json-preview")
     #expect(catalog.defaultFinalOption(for: .japanese)?.id == "json-final")
 }
@@ -95,18 +109,27 @@ func modelCatalogPreservesUnknownBackendMetadataWhenDecoded() throws {
 }
 
 @Test
-func builtInCatalogPreservesCurrentDefaultsAndLanguagePolicy() {
+func bundledCatalogPreservesDefaultsAndSeparatesCatalogFromRuntimeCapabilities() {
     let catalog = ModelCatalog.builtIn
 
+    #expect(catalog.models.count >= 20)
     #expect(catalog.defaultPreviewOption(for: .english)?.id == "parakeet-eou-320ms")
     #expect(catalog.defaultFinalOption(for: .japanese)?.id == "cohere-transcribe")
-    #expect(catalog.previewOptions(for: .japanese).isEmpty)
-    #expect(catalog.finalOptions(for: .japanese).map(\.id) == ["cohere-transcribe", "parakeet-ja"])
-    #expect(catalog.finalModels.filter { $0.backend.kind == .streaming }.map(\.id) == [
-        "parakeet-eou-160ms",
-        "parakeet-eou-320ms",
-        "parakeet-eou-1280ms",
-    ])
+    #expect(catalog.runnablePreviewOptions(for: .japanese).isEmpty)
+
+    let runnableJapanese = Set(catalog.runnableFinalOptions(for: .japanese).map(\.id))
+    #expect(runnableJapanese == ["cohere-transcribe", "parakeet-ja"])
+
+    let runnableEnglish = Set(catalog.runnableFinalOptions(for: .english).map(\.id))
+    #expect(runnableEnglish.contains("parakeet-tdt-ctc-110m"))
+    #expect(runnableEnglish.contains("nemotron-2240ms"))
+    #expect(runnableEnglish.contains("parakeet-unified-offline-15s"))
+
+    #expect(catalog.finalOptions(for: .japanese).contains { $0.id == "sensevoice-small" })
+    #expect(!catalog.runnableFinalOptions(for: .japanese).contains { $0.id == "sensevoice-small" })
+
+    #expect(catalog.model(id: "cohere-transcribe")?.performance?.accuracy == 5)
+    #expect(catalog.model(id: "parakeet-eou-160ms")?.performance?.speed == 5)
 }
 
 @Test
@@ -141,6 +164,38 @@ func settingsUseDefaultsFromInjectedCatalog() {
     #expect(settings.finalModelID == "json-final")
     #expect(settings.selectedPreviewOption?.detail(for: .preview) == "Preview")
     #expect(settings.selectedFinalOption?.detail(for: .final) == "Final")
+}
+
+@Test
+@MainActor
+func settingsHideCatalogModelsThisBinaryCannotRun() {
+    let suiteName = "ModelCatalogTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defer { defaults.removePersistentDomain(forName: suiteName) }
+
+    let catalog = ModelCatalog(models: [
+        ASRModelOption(
+            id: "unsupported-new-backend",
+            name: "Unsupported",
+            languages: [.japanese],
+            roleDetails: [ASRModelRoleDetail(role: .final, detail: "Future adapter")],
+            backend: ASRModelBackend(kind: "future-backend", variantID: "v1"),
+            defaultRoles: []
+        ),
+        ASRModelOption(
+            id: "supported-final",
+            name: "Supported",
+            languages: [.japanese],
+            roleDetails: [ASRModelRoleDetail(role: .final, detail: "Current adapter")],
+            backend: .cohereTranscribe,
+            defaultRoles: [.final]
+        ),
+    ])
+
+    let settings = SettingsStore(defaults: defaults, modelCatalog: catalog)
+
+    #expect(settings.finalOptions.map(\.id) == ["supported-final"])
+    #expect(settings.finalModelID == "supported-final")
 }
 
 @Test

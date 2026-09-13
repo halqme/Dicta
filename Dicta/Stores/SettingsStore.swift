@@ -62,19 +62,19 @@ final class SettingsStore {
     }
 
     var previewOptions: [ASRModelOption] {
-        modelCatalog.previewOptions(for: language)
+        modelCatalog.runnablePreviewOptions(for: language)
     }
 
     var finalOptions: [ASRModelOption] {
-        modelCatalog.finalOptions(for: language)
+        modelCatalog.runnableFinalOptions(for: language)
     }
 
     var selectedPreviewOption: ASRModelOption? {
-        modelCatalog.previewOption(id: previewModelID)
+        previewOptions.first { $0.id == previewModelID }
     }
 
     var selectedFinalOption: ASRModelOption? {
-        modelCatalog.finalOption(id: finalModelID)
+        finalOptions.first { $0.id == finalModelID }
     }
 
     var hasPreviewForCurrentLanguage: Bool {
@@ -82,7 +82,7 @@ final class SettingsStore {
     }
 
     private func normalizeModelsForLanguage() {
-        let previews = modelCatalog.previewOptions(for: language)
+        let previews = modelCatalog.runnablePreviewOptions(for: language)
         if previews.isEmpty {
             if !previewModelID.isEmpty {
                 previewModelID = ""
@@ -91,7 +91,7 @@ final class SettingsStore {
             previewModelID = modelCatalog.defaultPreviewOption(for: language)?.id ?? ""
         }
 
-        let finals = modelCatalog.finalOptions(for: language)
+        let finals = modelCatalog.runnableFinalOptions(for: language)
         if !finals.contains(where: { $0.id == finalModelID }) {
             finalModelID = modelCatalog.defaultFinalOption(for: language)?.id ?? ""
         }
