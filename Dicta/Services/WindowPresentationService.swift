@@ -148,7 +148,11 @@ final class WindowPresentationService: NSObject, NSWindowDelegate {
     }
 
     private func settingsDidAppearIfAlreadyVisible() {
-        guard NSApp.windows.contains(where: { $0.isVisible && $0.title == "Dicta Settings" }) else { return }
+        guard NSApp.windows.contains(where: { window in
+            window.isVisible
+                && window.styleMask.contains(.titled)
+                && window !== fallbackWindow
+        }) else { return }
         presentationInFlight = false
     }
 
