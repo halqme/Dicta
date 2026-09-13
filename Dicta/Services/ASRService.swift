@@ -502,10 +502,9 @@ actor ASRService {
         }
     }
 
-    /// Verify all required files before invoking FluidAudio's convenience loader so runtime
-    /// preparation cannot turn into a network fetch. Avoid mutating ModelHub.offlineMode: it is
-    /// process-global and would create a race with a Settings download while this actor is
-    /// suspended.
+    /// Load only from FluidAudio's local cache. The no-argument manager loaders are intentionally
+    /// reserved for Settings installation because some of them can purge and re-download a bad
+    /// cache. Dictation preparation must never turn into a network operation.
     private func loadStreamingManagerLocally(
         _ manager: any StreamingAsrManager,
         variant: StreamingModelVariant,
@@ -519,9 +518,36 @@ actor ASRService {
         )
 
         do {
-            try await manager.loadModels()
+            switch variant.engineFamily {
+            case .parakeetEou:
+                guard let typedManager = manager as? StreamingEouAsrManager else {
+                    throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                }
+                try await typedManager.loadModels(from: directory)
+
+            case .nemotron:
+                guard let typedManager = manager as? StreamingNemotronAsrManager else {
+                    throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                }
+                try await typedManager.loadModels(from: directory)
+
+            case .parakeetUnified:
+                if variant == .parakeetUnifiedOffline15s {
+                    guard let typedManager = manager as? UnifiedAsrManager else {
+                        throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                    }
+                    try await typedManager.loadModels(from: directory)
+                } else {
+                    guard let typedManager = manager as? StreamingUnifiedAsrManager else {
+                        throw ASRServiceError.modelNotInstalled(modelID: modelID)
+                    }
+                    try await typedManager.loadModels(from: directory)
+                }
+            }
         } catch is CancellationError {
             throw CancellationError()
+        } catch let error as ASRServiceError {
+            throw error
         } catch {
             throw ASRServiceError.modelNotInstalled(modelID: modelID)
         }
