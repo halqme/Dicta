@@ -85,9 +85,10 @@ enum CaptureMode: String, CaseIterable, Identifiable, Sendable {
 nonisolated enum InputLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     case japanese = "ja"
     case english = "en"
+    case chinese = "zh"
     case automatic = "auto"
 
-    static var allCases: [Self] { [.japanese, .english] }
+    static var allCases: [Self] { [.japanese, .english, .chinese] }
 
     var id: Self { self }
 
@@ -95,6 +96,7 @@ nonisolated enum InputLanguage: String, CaseIterable, Identifiable, Codable, Sen
         switch self {
         case .japanese: "Japanese"
         case .english: "English"
+        case .chinese: "Chinese"
         case .automatic: "Automatic"
         }
     }
