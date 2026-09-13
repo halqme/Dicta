@@ -50,16 +50,6 @@ struct ModelsSettingsPane: View {
         }
         .padding(24)
         .navigationTitle("Models")
-        .onChange(of: settings.previewModelID) {
-            if !settings.previewModelID.isEmpty {
-                modelManagement.installPreview(modelID: settings.previewModelID)
-            }
-        }
-        .onChange(of: settings.finalModelID) {
-            if !settings.finalModelID.isEmpty {
-                modelManagement.installFinal(modelID: settings.finalModelID)
-            }
-        }
     }
 
     private func activeModel(id: String, settings: SettingsStore) -> ASRModelOption? {
