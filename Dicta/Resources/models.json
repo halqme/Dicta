@@ -204,17 +204,6 @@
       "performance": { "speed": 5, "accuracy": 4 }
     },
     {
-      "id": "canary-1b-v2",
-      "name": "Canary 1B v2",
-      "languages": ["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ro", "cs", "sk", "sl", "hr", "bg", "ru", "uk", "da", "sv", "fi", "hu", "et", "lv", "lt", "mt", "el"],
-      "roleDetails": [
-        { "role": "final", "detail": "1B multilingual AED model; cataloged for future Dicta adapter support" }
-      ],
-      "backend": { "kind": "canary", "variantID": "1b-v2" },
-      "defaultRoles": [],
-      "performance": { "speed": 1, "accuracy": 5 }
-    },
-    {
       "id": "nemotron-multilingual-560ms",
       "name": "Nemotron Multilingual 0.6B · 560 ms",
       "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
