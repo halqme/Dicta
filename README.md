@@ -9,8 +9,10 @@ See [`docs/SPEC.md`](docs/SPEC.md) for the product and concurrency contract.
 ## Requirements
 
 - macOS 26+
+- Apple Silicon Mac
 - Xcode with Swift 6 support
-- Apple Silicon recommended for FluidAudio/Core ML inference
+
+Apple Silicon is a product requirement, not merely a performance recommendation: several formally supported FluidAudio ASR pipelines rely on the Apple Neural Engine, and Dicta guarantees that the pinned FluidAudio release's standalone ASR catalog is usable.
 
 ## Project shape
 
