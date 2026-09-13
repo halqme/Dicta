@@ -21,6 +21,7 @@ struct ModelsSettingsPane: View {
                 ModelLibrarySection(
                     title: "Live Preview",
                     subtitle: "Shown while you speak. Preview text is never inserted.",
+                    role: .preview,
                     options: settings.previewOptions,
                     selectedID: settings.previewModelID,
                     modelManagement: modelManagement,
@@ -36,6 +37,7 @@ struct ModelsSettingsPane: View {
                 ModelLibrarySection(
                     title: "Final Transcription",
                     subtitle: "Used after recording finishes. Only this result can be inserted.",
+                    role: .final,
                     options: settings.finalOptions,
                     selectedID: settings.finalModelID,
                     modelManagement: modelManagement,
@@ -84,6 +86,7 @@ struct ModelsSettingsPane: View {
 private struct ModelLibrarySection: View {
     let title: String
     let subtitle: String
+    let role: ASRModelOption.Role
     let options: [ASRModelOption]
     let selectedID: String
     let modelManagement: ModelManagementModel
@@ -114,6 +117,7 @@ private struct ModelLibrarySection: View {
                         ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
                             ModelLibraryRow(
                                 option: option,
+                                role: role,
                                 selected: option.id == selectedID,
                                 installed: modelManagement.isInstalled(modelID: option.id),
                                 active: modelManagement.activeOperationID == option.id,
@@ -137,6 +141,7 @@ private struct ModelLibrarySection: View {
 
 private struct ModelLibraryRow: View {
     let option: ASRModelOption
+    let role: ASRModelOption.Role
     let selected: Bool
     let installed: Bool
     let active: Bool
@@ -167,7 +172,7 @@ private struct ModelLibraryRow: View {
                     }
                 }
 
-                if let detail = option.roleDetails.first?.detail, !detail.isEmpty {
+                if let detail = option.detail(for: role), !detail.isEmpty {
                     Text(detail)
                         .font(.caption)
                         .foregroundStyle(.secondary)
