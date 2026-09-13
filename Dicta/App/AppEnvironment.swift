@@ -19,6 +19,7 @@ final class AppEnvironment {
         let settings = SettingsStore(modelCatalog: modelCatalog)
         let recordingService = RecordingService()
         let asrService = ASRService(modelCatalog: modelCatalog)
+        let modelStorageService = ModelStorageService(modelCatalog: modelCatalog)
         let vadService = VADService()
         let inputDeliveryService = InputDeliveryService()
         let targetResolver = TargetResolver(inputDeliveryService: inputDeliveryService)
@@ -50,6 +51,7 @@ final class AppEnvironment {
         let modelManagement = ModelManagementModel(
             asrService: asrService,
             vadService: vadService,
+            storageService: modelStorageService,
             appModel: appModel
         )
 
