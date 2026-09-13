@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 1,
+  "revision": 2,
   "models": [
     {
       "id": "parakeet-eou-160ms",
@@ -186,9 +186,9 @@
       "name": "SenseVoiceSmall",
       "languages": ["zh", "yue", "en", "ja", "ko"],
       "roleDetails": [
-        { "role": "final", "detail": "Fast non-autoregressive multilingual ASR; cataloged for future Dicta adapter support" }
+        { "role": "final", "detail": "Fast non-autoregressive multilingual ASR with automatic language detection" }
       ],
-      "backend": { "kind": "sensevoice", "variantID": "fp16" },
+      "backend": { "kind": "sensevoice", "variantID": "int8" },
       "defaultRoles": [],
       "performance": { "speed": 5, "accuracy": 4 }
     },
@@ -197,9 +197,9 @@
       "name": "Paraformer Large · Chinese",
       "languages": ["zh"],
       "roleDetails": [
-        { "role": "final", "detail": "Non-autoregressive Mandarin ASR; cataloged for future Dicta adapter support" }
+        { "role": "final", "detail": "Fast non-autoregressive Mandarin ASR with parallel decoding" }
       ],
-      "backend": { "kind": "paraformer", "variantID": "large-zh" },
+      "backend": { "kind": "paraformer", "variantID": "int8" },
       "defaultRoles": [],
       "performance": { "speed": 5, "accuracy": 4 }
     },
@@ -208,7 +208,7 @@
       "name": "Nemotron Multilingual 0.6B · 560 ms",
       "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
       "roleDetails": [
-        { "role": "final", "detail": "Multilingual low-latency streaming tier; cataloged for future Dicta adapter support" }
+        { "role": "final", "detail": "Multilingual low-latency streaming tier" }
       ],
       "backend": { "kind": "nemotron-multilingual", "variantID": "560ms" },
       "defaultRoles": [],
@@ -219,7 +219,7 @@
       "name": "Nemotron Multilingual 0.6B · 1120 ms",
       "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
       "roleDetails": [
-        { "role": "final", "detail": "Multilingual balanced streaming tier; cataloged for future Dicta adapter support" }
+        { "role": "final", "detail": "Multilingual balanced streaming tier" }
       ],
       "backend": { "kind": "nemotron-multilingual", "variantID": "1120ms" },
       "defaultRoles": [],
@@ -230,7 +230,7 @@
       "name": "Nemotron Multilingual 0.6B · 2240 ms",
       "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
       "roleDetails": [
-        { "role": "final", "detail": "Recommended multilingual streaming tier; cataloged for future Dicta adapter support" }
+        { "role": "final", "detail": "Recommended multilingual streaming tier" }
       ],
       "backend": { "kind": "nemotron-multilingual", "variantID": "2240ms" },
       "defaultRoles": [],
@@ -241,7 +241,7 @@
       "name": "Nemotron Multilingual 0.6B · 4480 ms",
       "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
       "roleDetails": [
-        { "role": "final", "detail": "Highest-context multilingual streaming tier; cataloged for future Dicta adapter support" }
+        { "role": "final", "detail": "Highest-context multilingual streaming tier" }
       ],
       "backend": { "kind": "nemotron-multilingual", "variantID": "4480ms" },
       "defaultRoles": [],

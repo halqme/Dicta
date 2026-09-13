@@ -47,6 +47,10 @@ actor ModelStorageService {
     }
 
     private func isInstalled(_ option: ASRModelOption) -> Bool {
+        if AdditionalASRAdapter.supportedBackendKinds.contains(option.backend.kind.rawValue) {
+            return AdditionalASRAdapter.isInstalled(option)
+        }
+
         guard let location = storageLocation(for: option) else { return false }
 
         switch location {
@@ -76,6 +80,10 @@ actor ModelStorageService {
     }
 
     private func storageLocation(for option: ASRModelOption) -> StorageLocation? {
+        if let directory = AdditionalASRAdapter.storageDirectory(for: option) {
+            return .directory(directory)
+        }
+
         if option.backend.kind == .cohereTranscribe {
             return .directory(
                 MLModelConfigurationUtils.defaultModelsDirectory(for: .cohereTranscribeCoreml)

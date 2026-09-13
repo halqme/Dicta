@@ -37,7 +37,7 @@ A single editable text window stores transcripts that cannot be inserted safely.
 
 ### Settings
 
-Settings contain activation mode, shortcut, default input language, preview model, final model, silence auto-finish controls, and local-history preference.
+Settings contain activation mode, shortcut, default input language, preview/final model management, silence auto-finish controls, permissions, and local-history preference. Large model files have explicit Download and Remove actions; selecting a model does not imply a network transfer.
 
 ## 3. Recording interaction
 
@@ -69,12 +69,15 @@ Settings contain activation mode, shortcut, default input language, preview mode
 ### Final ASR
 
 - The final result is the only result eligible for insertion.
+- Every standalone ASR family formally supported by the pinned FluidAudio release must be usable as a final model when at least one Dicta input language intersects its supported-language set.
 - A streaming-capable model may also be selected as the final model; it is still treated as a final pass and its result is committed only after recording finishes.
-- Model download happens when a model is selected/installed in Settings, not during first dictation.
-- The selected final model starts loading/warming when recording starts.
+- Model selection and model installation are separate. Downloads happen only from an explicit Download action in Settings, never merely because a model is selected and never during first dictation.
+- The selected final model starts loading/warming when recording starts, using only the local FluidAudio cache.
 - A loaded final model remains resident for 10 minutes after its latest use, then is cleaned up.
-- Preview and final may use the same checkpoint, but Dicta does not share one stateful `StreamingAsrManager` across them because preview for session B may overlap finalization of session A. FluidAudio may share underlying Core ML resources internally; Dicta keeps decoder/session state independent.
+- Preview and final may use the same checkpoint, but Dicta does not share one stateful streaming manager across them because preview for session B may overlap finalization of session A. FluidAudio may share underlying Core ML resources internally; Dicta keeps decoder/session state independent.
 - Keep one preview manager plus at most the currently selected final manager resident in normal operation.
+
+The formal-support boundary is FluidAudio's documented standalone transcription model catalog. Auxiliary keyword-spotting/rescoring encoders, VAD, diarization, TTS, experimental/beta conversions not listed in that formal ASR catalog, and other support models are not final-transcription choices merely because model assets exist in FluidAudio source.
 
 ## 5. Concurrency and queueing
 
@@ -146,7 +149,7 @@ Secure text inputs must not be bypassed.
 - Transcript history is local and can be disabled.
 - MVP retention policy: keep at most the newest 100 transcript items and remove items older than 7 days.
 - History stores final text, timestamp, destination outcome, and optionally target application identity/name. It does not store audio.
-- Dicta may fetch the public model-catalog JSON from its GitHub repository at startup and downloads model files only when the user installs a model from Settings. Catalog requests do not contain recorded audio or transcript text.
+- Dicta may fetch the public model-catalog JSON from its GitHub repository at startup and downloads model files only when the user explicitly downloads a model from Settings. Catalog requests do not contain recorded audio or transcript text.
 
 ## 8. Model/language settings
 
@@ -154,11 +157,26 @@ The source of truth for model metadata is `Dicta/Resources/models.json`, not Swi
 
 At startup Dicta uses the newer of the bundled catalog and the last-known-good cached remote catalog. It then checks the canonical catalog on GitHub. A newer valid revision is written atomically and takes effect on the next launch. Network failure, stale revisions, unknown schema versions, or invalid manifests leave the working catalog unchanged.
 
-The catalog is allowed to describe more models and languages than the running app can execute. Runtime compatibility remains a binary capability: Settings exposes only entries whose backend and variant are supported by the current Dicta/FluidAudio build. This keeps catalog updates from creating selectable-but-nonfunctional models.
+The catalog is allowed to describe future models and languages that the running app cannot execute. Runtime compatibility remains a binary capability: Settings exposes only entries whose backend and variant are supported by the current Dicta/FluidAudio build. This keeps forward catalog updates from creating selectable-but-nonfunctional models. For models in FluidAudio's formal standalone-ASR catalog for the pinned release, the corresponding Dicta runtime adapter is required rather than leaving the entry permanently hidden.
 
-Dicta's user-facing input languages are currently Japanese and English. Catalog language codes are deliberately open strings, so entries may describe French, German, Chinese, Korean, and other languages without making older binaries fail to decode the manifest. The app presents only the intersection between catalog capabilities and app-supported input languages.
+Dicta's user-facing input languages are Japanese, English, and Chinese. Catalog language codes are deliberately open strings, so entries may describe French, German, Korean, and other languages without making older binaries fail to decode the manifest. The app presents only the intersection between catalog capabilities and app-supported input languages.
 
-With FluidAudio 0.15.7, resident preview remains English-only Parakeet EOU 120M. Final-model support includes Cohere Transcribe, Parakeet TDT v2/v3/Japanese, Parakeet TDT-CTC 110M, Parakeet EOU, English Nemotron streaming tiers, and Parakeet Unified streaming/offline tiers. Other FluidAudio ASR families may be present in the catalog but stay hidden until Dicta implements their manager-specific adapter.
+With FluidAudio 0.15.7, resident preview remains English-only Parakeet EOU 120M. Final-model support covers every standalone ASR family in FluidAudio's formal model catalog:
+
+- Parakeet TDT v2 and v3
+- Parakeet TDT-CTC 110M
+- Parakeet TDT Japanese
+- Cohere Transcribe
+- SenseVoiceSmall
+- Paraformer-large (zh)
+- Parakeet EOU final-pass variants
+- Nemotron Speech Streaming English tiers
+- Nemotron Speech Streaming Multilingual tiers
+- Parakeet Unified streaming and offline variants
+
+FluidAudio's Parakeet CTC 110M/0.6B custom-vocabulary models are auxiliary rescoring/keyword-spotting components and are not presented as standalone final transcription engines. FluidAudio's Canary 1B v2 conversion is marked beta in 0.15.7 and is not listed in the formal `Documentation/Models.md` ASR table, so it is not part of this formal-support guarantee.
+
+SenseVoice and Paraformer use their int8 ANE variants by default to reduce download/storage footprint while retaining FluidAudio's documented accuracy parity. Nemotron Multilingual uses the full multilingual ship for each selected latency tier so a downloaded tier can serve Japanese, English, and Chinese without maintaining duplicate language-specific copies.
 
 Speed and accuracy ratings are qualitative relative guidance for model selection, not claims that results from different hardware, languages, or benchmark datasets are numerically comparable.
 
@@ -192,7 +210,9 @@ Permission failures must leave the user with an understandable path to Settings 
 Keep these responsibilities separate:
 
 - `RecordingService`: microphone and in-memory PCM ownership.
-- `ASRService`: FluidAudio model lifecycle and transcription.
+- `ASRService`: common FluidAudio model lifecycle, finalization serialization integration, and transcription dispatch.
+- `AdditionalASRAdapter` / `FinalASRRuntime`: manager-specific adapters for formally supported FluidAudio ASR families whose APIs do not fit the Cohere/Parakeet/common-streaming paths.
+- `ModelStorageService`: actual FluidAudio cache inspection and explicit model removal.
 - `ModelCatalogLoader`: bundled/cached/remote model-catalog selection and refresh.
 - `ModelCatalog`: decoded model metadata, validation, and runtime-visible queries.
 - `TargetResolver`: target captured at record start.
@@ -205,24 +225,26 @@ UI-owned state is `@MainActor`. Audio/model/finalization work must not be placed
 
 ## 12. MVP implementation status
 
-Implemented in the initial Xcode project and subsequent catalog work:
+Implemented in the Xcode project and subsequent catalog/UI work:
 
 1. Carbon global shortcut registration with pressed/released events for PTT, Toggle behavior, and Escape cancellation while recording.
 2. `AVAudioEngine` system-default microphone capture with an `AsyncStream` of preview/VAD chunks while retaining lossless final PCM separately.
 3. FluidAudio Parakeet EOU resident preview integration for English.
-4. Final-model installation, recording-start warm-up, serial final inference, and actor-owned 10-minute eviction across the supported Cohere, Parakeet, Nemotron, and Unified adapters.
-5. Silero streaming VAD silence auto-finish for Toggle mode.
-6. AX target/selection capture at recording start and conservative delayed direct insertion.
-7. Clipboard-preserving Cmd-V fallback with full pasteboard representation snapshots and `changeCount` race protection.
-8. Non-AX overlap-group routing to one Fallback Editor.
-9. Local JSON history persistence/pruning.
-10. Non-activating AppKit HUD presentation and a standard editable Fallback Editor with Writing Tools affordance.
-11. Bundled + remotely refreshable model catalog with last-known-good caching, open language codes, runtime capability filtering, and model speed/accuracy guidance.
+4. Explicit model download/removal UI backed by FluidAudio's actual local cache rather than duplicate install-state preferences.
+5. Final-model installation, recording-start local-only warm-up, serial final inference, and actor-owned 10-minute eviction across all formally supported FluidAudio 0.15.7 standalone ASR families listed above.
+6. Silero streaming VAD silence auto-finish for Toggle mode.
+7. AX target/selection capture at recording start and conservative delayed direct insertion.
+8. Clipboard-preserving Cmd-V fallback with full pasteboard representation snapshots and `changeCount` race protection.
+9. Non-AX overlap-group routing to one Fallback Editor.
+10. Local JSON history persistence/pruning.
+11. Non-activating AppKit HUD presentation and a standard editable Fallback Editor with Writing Tools affordance.
+12. Bundled + remotely refreshable model catalog with last-known-good caching, open language codes, runtime capability filtering, and model speed/accuracy guidance.
 
 Still required before shipping:
 
-- Build and run on macOS 26 with the selected Xcode toolchain; this repository may have been edited in non-macOS environments where AppKit cannot be type-checked.
+- Build and run on macOS 26 with the selected Xcode toolchain; this repository may have been edited in non-macOS environments where AppKit/FluidAudio APIs cannot be type-checked.
+- Exercise every supported ASR family end-to-end on Apple Silicon, including install, local-only preflight/load, transcription, eviction, and removal.
 - Exercise TCC permission transitions (microphone, Accessibility/post-event) on a clean user account.
 - End-to-end tests against representative native AppKit/SwiftUI, Chromium/Electron, browser, and secure-text targets.
-- Profile model load time, memory residency, and ANE contention on supported Macs.
+- Profile model load time, memory residency, download size, and ANE contention on supported Macs.
 - Developer ID signing, notarization, update/distribution policy, and an application icon.

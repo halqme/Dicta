@@ -109,7 +109,7 @@ func modelCatalogPreservesUnknownBackendMetadataWhenDecoded() throws {
 }
 
 @Test
-func bundledCatalogPreservesDefaultsAndSeparatesCatalogFromRuntimeCapabilities() {
+func bundledCatalogMakesAllFormalStandaloneFluidAudioASRFamiliesRunnable() {
     let catalog = ModelCatalog.builtIn
 
     #expect(catalog.models.count >= 20)
@@ -118,16 +118,37 @@ func bundledCatalogPreservesDefaultsAndSeparatesCatalogFromRuntimeCapabilities()
     #expect(catalog.runnablePreviewOptions(for: .japanese).isEmpty)
 
     let runnableJapanese = Set(catalog.runnableFinalOptions(for: .japanese).map(\.id))
-    #expect(runnableJapanese == ["cohere-transcribe", "parakeet-ja"])
+    #expect(runnableJapanese == [
+        "cohere-transcribe",
+        "parakeet-ja",
+        "sensevoice-small",
+        "nemotron-multilingual-560ms",
+        "nemotron-multilingual-1120ms",
+        "nemotron-multilingual-2240ms",
+        "nemotron-multilingual-4480ms",
+    ])
 
     let runnableEnglish = Set(catalog.runnableFinalOptions(for: .english).map(\.id))
     #expect(runnableEnglish.contains("parakeet-tdt-ctc-110m"))
     #expect(runnableEnglish.contains("nemotron-2240ms"))
     #expect(runnableEnglish.contains("parakeet-unified-offline-15s"))
+    #expect(runnableEnglish.contains("sensevoice-small"))
+    #expect(runnableEnglish.contains("nemotron-multilingual-2240ms"))
 
-    #expect(catalog.finalOptions(for: .japanese).contains { $0.id == "sensevoice-small" })
-    #expect(!catalog.runnableFinalOptions(for: .japanese).contains { $0.id == "sensevoice-small" })
+    let runnableChinese = Set(catalog.runnableFinalOptions(for: .chinese).map(\.id))
+    #expect(runnableChinese == [
+        "cohere-transcribe",
+        "sensevoice-small",
+        "paraformer-large-zh",
+        "nemotron-multilingual-560ms",
+        "nemotron-multilingual-1120ms",
+        "nemotron-multilingual-2240ms",
+        "nemotron-multilingual-4480ms",
+    ])
 
+    #expect(InputLanguage.allCases == [.japanese, .english, .chinese])
+    #expect(catalog.model(id: "sensevoice-small")?.backend.variantID == "int8")
+    #expect(catalog.model(id: "paraformer-large-zh")?.backend.variantID == "int8")
     #expect(catalog.model(id: "cohere-transcribe")?.performance?.accuracy == 5)
     #expect(catalog.model(id: "parakeet-eou-160ms")?.performance?.speed == 5)
 }
