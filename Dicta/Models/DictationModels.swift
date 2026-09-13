@@ -79,12 +79,15 @@ enum CaptureMode: String, CaseIterable, Identifiable, Sendable {
 
 /// Languages Dicta itself currently exposes to users.
 ///
-/// This intentionally remains a closed app capability. The model catalog uses the open
-/// `ModelLanguageCode` type so it may describe additional languages without requiring an app
-/// update or breaking an older Dicta binary.
+/// `automatic` remains decodable only to migrate existing preferences; it is deliberately omitted
+/// from `allCases` and normalized to Japanese by SettingsStore. The model catalog uses the open
+/// `ModelLanguageCode` type, so catalog language support is independent from this app-level enum.
 nonisolated enum InputLanguage: String, CaseIterable, Identifiable, Codable, Sendable {
     case japanese = "ja"
     case english = "en"
+    case automatic = "auto"
+
+    static var allCases: [Self] { [.japanese, .english] }
 
     var id: Self { self }
 
@@ -92,6 +95,7 @@ nonisolated enum InputLanguage: String, CaseIterable, Identifiable, Codable, Sen
         switch self {
         case .japanese: "Japanese"
         case .english: "English"
+        case .automatic: "Automatic"
         }
     }
 }
