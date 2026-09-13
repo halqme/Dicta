@@ -40,8 +40,10 @@ jobs:
             -scheme Dicta
 
       - name: Build and run unit tests
+        shell: bash
         run: |
           set -o pipefail
+          set +e
           xcodebuild test \
             -project Dicta.xcodeproj \
             -scheme Dicta \
@@ -49,4 +51,26 @@ jobs:
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
+          status=${PIPESTATUS[0]}
+          set -e
+
+          if [[ "$status" -ne 0 ]]; then
+            diagnostics="$RUNNER_TEMP/xcodebuild-diagnostics.log"
+            grep -E '(^|[[:space:]])(error:|Testing failed:|The following build commands failed:)|:[0-9]+:[0-9]+: error:' \
+              "$RUNNER_TEMP/xcodebuild.log" | tail -n 200 > "$diagnostics" || true
+
+            {
+              echo '### xcodebuild diagnostics'
+              echo '```text'
+              cat "$diagnostics"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+
+            while IFS= read -r line; do
+              [[ -n "$line" ]] && echo "::error::$line"
+            done < "$diagnostics"
+          fi
+
+          exit "$status"
