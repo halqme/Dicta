@@ -21,7 +21,6 @@ struct DictaApp: App {
                     environment.windowPresenter.restoreAccessoryPolicyIfNeeded()
                 }
         }
-        .windowResizability(.contentSize)
     }
 }
 
