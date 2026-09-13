@@ -9,8 +9,12 @@ final class AppEnvironment {
     let hotKeyService: GlobalHotKeyService?
     let windowPresenter: WindowPresentationService
 
-    /// Injecting the catalog keeps the built-in value replaceable by a decoded JSON manifest.
-    init(modelCatalog: ModelCatalog = .builtIn) {
+    /// A caller may inject a catalog for tests. Normal startup prefers the last-known-good cached
+    /// remote manifest and falls back to the bundled catalog.
+    init(modelCatalog injectedCatalog: ModelCatalog? = nil) {
+        let shouldRefreshCatalog = injectedCatalog == nil
+        let modelCatalog = injectedCatalog ?? ModelCatalogLoader.loadStartupCatalog()
+
         let appModel = AppModel()
         let settings = SettingsStore(modelCatalog: modelCatalog)
         let recordingService = RecordingService()
@@ -68,6 +72,12 @@ final class AppEnvironment {
 
         registerCurrentHotKey()
         controller.bootstrap()
+
+        if shouldRefreshCatalog {
+            Task.detached(priority: .utility) {
+                await ModelCatalogLoader.refreshCache()
+            }
+        }
     }
 
     func registerCurrentHotKey() {
