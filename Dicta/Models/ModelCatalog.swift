@@ -19,6 +19,7 @@ nonisolated struct ModelLanguageCode: RawRepresentable, Codable, Hashable, Senda
 
     static let japanese = Self(rawValue: "ja")
     static let english = Self(rawValue: "en")
+    static let chinese = Self(rawValue: "zh")
 }
 
 /// Coarse relative ratings for choosing between models. They are not benchmark measurements.
@@ -74,6 +75,9 @@ nonisolated struct ASRModelBackend: Codable, Hashable, Sendable {
         static let cohereTranscribe = Self(rawValue: "cohere-transcribe")
         static let parakeet = Self(rawValue: "parakeet")
         static let streaming = Self(rawValue: "streaming")
+        static let senseVoice = Self(rawValue: "sensevoice")
+        static let paraformer = Self(rawValue: "paraformer")
+        static let nemotronMultilingual = Self(rawValue: "nemotron-multilingual")
     }
 
     let kind: Kind
@@ -155,8 +159,8 @@ nonisolated struct ASRModelRoleDetail: Codable, Hashable, Sendable {
 
 /// Capabilities actually implemented by this Dicta/FluidAudio binary.
 ///
-/// The manifest may contain more models than this set. Such entries remain decodable but are not
-/// shown in Settings until the binary has a compatible adapter.
+/// The manifest remains forward-compatible with future backend identifiers, but every standalone
+/// ASR backend formally supported by the pinned FluidAudio release is runnable here.
 nonisolated struct ModelRuntimeCapabilities: Sendable {
     static let current = Self()
 
@@ -204,6 +208,12 @@ nonisolated struct ModelRuntimeCapabilities: Sendable {
             case .final:
                 return Self.finalStreamingVariants.contains(variantID)
             }
+        }
+        if option.backend.kind == .senseVoice
+            || option.backend.kind == .paraformer
+            || option.backend.kind == .nemotronMultilingual
+        {
+            return role == .final && option.backend.variantID != nil
         }
         return false
     }
@@ -393,7 +403,11 @@ nonisolated struct ModelCatalog: Codable, Sendable {
             }
 
             let isCohere = model.backend.kind == .cohereTranscribe
-            let needsVariant = model.backend.kind == .parakeet || model.backend.kind == .streaming
+            let needsVariant = model.backend.kind == .parakeet
+                || model.backend.kind == .streaming
+                || model.backend.kind == .senseVoice
+                || model.backend.kind == .paraformer
+                || model.backend.kind == .nemotronMultilingual
             if isCohere, model.backend.variantID != nil {
                 throw ValidationError.cohereBackendCannotHaveVariant(model.id)
             }
