@@ -55,6 +55,9 @@ final class SettingsStore {
             .flatMap { try? JSONDecoder().decode(HotKeyConfiguration.self, from: $0) }
             ?? .optionSpace
 
+        if language == .automatic {
+            language = .japanese
+        }
         normalizeModelsForLanguage()
     }
 
