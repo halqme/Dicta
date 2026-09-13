@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 1,
+  "revision": 1,
+  "models": [
+    {
+      "id": "parakeet-eou-160ms",
+      "name": "Parakeet EOU 120M · 160 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "preview", "detail": "Lowest-latency English preview" },
+        { "role": "final", "detail": "Lowest-latency streaming final pass" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-eou-160ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 5, "accuracy": 3 }
+    },
+    {
+      "id": "parakeet-eou-320ms",
+      "name": "Parakeet EOU 120M · 320 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "preview", "detail": "Balanced realtime English preview" },
+        { "role": "final", "detail": "Small streaming model used as a final pass" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-eou-320ms" },
+      "defaultRoles": ["preview"],
+      "performance": { "speed": 5, "accuracy": 3 }
+    },
+    {
+      "id": "parakeet-eou-1280ms",
+      "name": "Parakeet EOU 120M · 1280 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "preview", "detail": "Higher-latency, higher-accuracy English preview" },
+        { "role": "final", "detail": "Higher-accuracy Parakeet EOU final pass" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-eou-1280ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "parakeet-tdt-ctc-110m",
+      "name": "Parakeet TDT-CTC 110M",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Compact 110M batch model; fast with competitive English accuracy" }
+      ],
+      "backend": { "kind": "parakeet", "variantID": "tdt-ctc-110m" },
+      "defaultRoles": [],
+      "performance": { "speed": 5, "accuracy": 4 }
+    },
+    {
+      "id": "parakeet-v3",
+      "name": "Parakeet TDT v3",
+      "languages": ["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ro", "cs", "sk", "sl", "hr", "bg", "ru", "uk", "da", "sv", "fi", "hu", "et", "lv", "lt", "mt", "el"],
+      "roleDetails": [
+        { "role": "final", "detail": "0.6B multilingual TDT model for 25 European languages" }
+      ],
+      "backend": { "kind": "parakeet", "variantID": "v3" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "parakeet-v2",
+      "name": "Parakeet TDT v2",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "0.6B English-only TDT model with high recall" }
+      ],
+      "backend": { "kind": "parakeet", "variantID": "v2" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "parakeet-ja",
+      "name": "Parakeet TDT Japanese",
+      "languages": ["ja"],
+      "roleDetails": [
+        { "role": "final", "detail": "Japanese-only 0.6B TDT model" }
+      ],
+      "backend": { "kind": "parakeet", "variantID": "tdt-ja" },
+      "defaultRoles": [],
+      "performance": { "speed": 2, "accuracy": 4 }
+    },
+    {
+      "id": "cohere-transcribe",
+      "name": "Cohere Transcribe",
+      "languages": ["en", "fr", "de", "es", "it", "pt", "nl", "pl", "el", "ar", "ja", "zh", "vi", "ko"],
+      "roleDetails": [
+        { "role": "final", "detail": "High-accuracy 14-language final transcription" }
+      ],
+      "backend": { "kind": "cohere-transcribe" },
+      "defaultRoles": ["final"],
+      "performance": { "speed": 2, "accuracy": 5 }
+    },
+    {
+      "id": "nemotron-560ms",
+      "name": "Nemotron Streaming 0.6B · 560 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Lowest-latency Nemotron English streaming tier" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "nemotron-560ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "nemotron-1120ms",
+      "name": "Nemotron Streaming 0.6B · 1120 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Balanced Nemotron English streaming tier" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "nemotron-1120ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 3, "accuracy": 4 }
+    },
+    {
+      "id": "nemotron-2240ms",
+      "name": "Nemotron Streaming 0.6B · 2240 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Highest-throughput Nemotron English streaming tier" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "nemotron-2240ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 3, "accuracy": 5 }
+    },
+    {
+      "id": "parakeet-unified-320ms",
+      "name": "Parakeet Unified 0.6B · 320 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Lowest-latency Unified tier with punctuation and capitalization" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-unified-320ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "parakeet-unified-640ms",
+      "name": "Parakeet Unified 0.6B · 640 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Efficiency-oriented Unified tier with punctuation and capitalization" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-unified-640ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "parakeet-unified-1120ms",
+      "name": "Parakeet Unified 0.6B · 1120 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Low-latency Unified tier with strong English accuracy" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-unified-1120ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 3, "accuracy": 5 }
+    },
+    {
+      "id": "parakeet-unified-2080ms",
+      "name": "Parakeet Unified 0.6B · 2080 ms",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Higher-context Unified streaming tier" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-unified-2080ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 3, "accuracy": 5 }
+    },
+    {
+      "id": "parakeet-unified-offline-15s",
+      "name": "Parakeet Unified 0.6B · Offline",
+      "languages": ["en"],
+      "roleDetails": [
+        { "role": "final", "detail": "Full-attention 15-second batch windows; best Unified accuracy" }
+      ],
+      "backend": { "kind": "streaming", "variantID": "parakeet-unified-offline-15s" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 5 }
+    },
+    {
+      "id": "sensevoice-small",
+      "name": "SenseVoiceSmall",
+      "languages": ["zh", "yue", "en", "ja", "ko"],
+      "roleDetails": [
+        { "role": "final", "detail": "Fast non-autoregressive multilingual ASR; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "sensevoice", "variantID": "fp16" },
+      "defaultRoles": [],
+      "performance": { "speed": 5, "accuracy": 4 }
+    },
+    {
+      "id": "paraformer-large-zh",
+      "name": "Paraformer Large · Chinese",
+      "languages": ["zh"],
+      "roleDetails": [
+        { "role": "final", "detail": "Non-autoregressive Mandarin ASR; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "paraformer", "variantID": "large-zh" },
+      "defaultRoles": [],
+      "performance": { "speed": 5, "accuracy": 4 }
+    },
+    {
+      "id": "canary-1b-v2",
+      "name": "Canary 1B v2",
+      "languages": ["en", "es", "fr", "de", "it", "pt", "nl", "pl", "ro", "cs", "sk", "sl", "hr", "bg", "ru", "uk", "da", "sv", "fi", "hu", "et", "lv", "lt", "mt", "el"],
+      "roleDetails": [
+        { "role": "final", "detail": "1B multilingual AED model; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "canary", "variantID": "1b-v2" },
+      "defaultRoles": [],
+      "performance": { "speed": 1, "accuracy": 5 }
+    },
+    {
+      "id": "nemotron-multilingual-560ms",
+      "name": "Nemotron Multilingual 0.6B · 560 ms",
+      "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
+      "roleDetails": [
+        { "role": "final", "detail": "Multilingual low-latency streaming tier; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "nemotron-multilingual", "variantID": "560ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 4, "accuracy": 4 }
+    },
+    {
+      "id": "nemotron-multilingual-1120ms",
+      "name": "Nemotron Multilingual 0.6B · 1120 ms",
+      "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
+      "roleDetails": [
+        { "role": "final", "detail": "Multilingual balanced streaming tier; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "nemotron-multilingual", "variantID": "1120ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 3, "accuracy": 4 }
+    },
+    {
+      "id": "nemotron-multilingual-2240ms",
+      "name": "Nemotron Multilingual 0.6B · 2240 ms",
+      "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
+      "roleDetails": [
+        { "role": "final", "detail": "Recommended multilingual streaming tier; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "nemotron-multilingual", "variantID": "2240ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 3, "accuracy": 5 }
+    },
+    {
+      "id": "nemotron-multilingual-4480ms",
+      "name": "Nemotron Multilingual 0.6B · 4480 ms",
+      "languages": ["en", "es", "fr", "it", "pt", "de", "zh", "ja"],
+      "roleDetails": [
+        { "role": "final", "detail": "Highest-context multilingual streaming tier; cataloged for future Dicta adapter support" }
+      ],
+      "backend": { "kind": "nemotron-multilingual", "variantID": "4480ms" },
+      "defaultRoles": [],
+      "performance": { "speed": 2, "accuracy": 5 }
+    }
+  ]
+}
