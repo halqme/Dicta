@@ -4,14 +4,15 @@ import Observation
 @MainActor
 @Observable
 final class ModelManagementModel {
-    private enum InstallRequest: Equatable {
+    private enum Request: Equatable {
         case preview(String)
         case final(String)
+        case remove(String)
         case vad
 
         var operationID: String {
             switch self {
-            case .preview(let id), .final(let id): id
+            case .preview(let id), .final(let id), .remove(let id): id
             case .vad: "silero-vad"
             }
         }
@@ -20,6 +21,7 @@ final class ModelManagementModel {
             switch self {
             case .preview: .preview
             case .final: .final
+            case .remove: .storage
             case .vad: .vad
             }
         }
@@ -27,25 +29,42 @@ final class ModelManagementModel {
         enum Role {
             case preview
             case final
+            case storage
             case vad
         }
     }
 
     private let asrService: ASRService
     private let vadService: VADService
+    private let storageService: ModelStorageService
     private let appModel: AppModel
 
-    private var pending: [InstallRequest] = []
+    private var pending: [Request] = []
     private var workerTask: Task<Void, Never>?
 
     private(set) var activeOperationID: String?
     private(set) var queuedOperationCount = 0
     private(set) var statusMessage: String?
+    private(set) var installedModelIDs: Set<String> = []
 
-    init(asrService: ASRService, vadService: VADService, appModel: AppModel) {
+    init(
+        asrService: ASRService,
+        vadService: VADService,
+        storageService: ModelStorageService,
+        appModel: AppModel
+    ) {
         self.asrService = asrService
         self.vadService = vadService
+        self.storageService = storageService
         self.appModel = appModel
+
+        Task { [weak self] in
+            await self?.refreshInstalledModels()
+        }
+    }
+
+    func isInstalled(modelID: String) -> Bool {
+        installedModelIDs.contains(modelID)
     }
 
     func installPreview(modelID: String) {
@@ -58,20 +77,23 @@ final class ModelManagementModel {
         enqueue(.final(modelID))
     }
 
+    func removeModel(modelID: String) {
+        guard !modelID.isEmpty else { return }
+        enqueue(.remove(modelID))
+    }
+
     func installVAD() {
         enqueue(.vad)
     }
 
-    private func enqueue(_ request: InstallRequest) {
-        if activeOperationID == request.operationID,
-           pending.contains(where: { $0 == request }) == false {
-            return
-        }
+    func refreshInstalledModels() async {
+        installedModelIDs = await storageService.installedModelIDs()
+    }
 
-        // Settings changes can normalize both preview and final selections at once. Serialize
-        // downloads instead of silently dropping the second request. For repeated changes in the
-        // same role, only the latest pending selection is useful.
-        pending.removeAll { $0.role == request.role }
+    private func enqueue(_ request: Request) {
+        guard activeOperationID != request.operationID || pending.contains(request) else { return }
+
+        pending.removeAll { $0.role == request.role && $0.operationID == request.operationID }
         guard !pending.contains(request) else { return }
         pending.append(request)
         queuedOperationCount = pending.count
@@ -100,23 +122,31 @@ final class ModelManagementModel {
             do {
                 switch request {
                 case .preview(let modelID):
-                    statusMessage = "Downloading preview model…"
+                    statusMessage = "Downloading model…"
                     try await asrService.installPreviewModel(modelID: modelID)
-                    statusMessage = "Preview model is ready."
+                    statusMessage = "Model downloaded."
 
                 case .final(let modelID):
-                    statusMessage = "Downloading final model…"
+                    statusMessage = "Downloading model…"
                     try await asrService.installFinalModel(modelID: modelID)
-                    statusMessage = "Final model is installed."
+                    statusMessage = "Model downloaded."
+
+                case .remove(let modelID):
+                    statusMessage = "Removing model…"
+                    try await storageService.removeModel(modelID: modelID)
+                    statusMessage = "Model removed."
 
                 case .vad:
                     statusMessage = "Downloading speech detector…"
                     try await vadService.install()
                     statusMessage = "Speech detector is ready."
                 }
+
+                await refreshInstalledModels()
             } catch {
                 statusMessage = nil
                 appModel.report(error)
+                await refreshInstalledModels()
             }
         }
     }
