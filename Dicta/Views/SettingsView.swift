@@ -33,8 +33,9 @@ struct SettingsView: View {
 
             Section("Input") {
                 Picker("Language", selection: $settings.language) {
-                    Text(InputLanguage.japanese.displayName).tag(InputLanguage.japanese)
-                    Text(InputLanguage.english.displayName).tag(InputLanguage.english)
+                    ForEach(InputLanguage.allCases) { language in
+                        Text(language.displayName).tag(language)
+                    }
                 }
                 .disabled(environment.appModel.isRecording)
 
@@ -67,13 +68,13 @@ struct SettingsView: View {
                         Text("Unavailable for \(settings.language.displayName)")
                             .foregroundStyle(.secondary)
                     }
-                    Text("FluidAudio 0.15.7 has no small Japanese streaming model. Dicta keeps the live HUD but shows only “Listening…” for Japanese rather than keeping a 0.6B model resident.")
+                    Text("Dicta only offers small always-resident models for live preview. No compatible preview model is currently available for this language.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
                     Picker("Preview", selection: $settings.previewModelID) {
                         ForEach(settings.previewOptions) { option in
-                            Text(option.name).tag(option.id)
+                            Text(modelPickerLabel(option)).tag(option.id)
                         }
                     }
                     .disabled(environment.appModel.isRecording)
@@ -83,15 +84,16 @@ struct SettingsView: View {
                         }
                         .disabled(environment.appModel.isRecording || modelManagement.activeOperationID != nil || settings.previewModelID.isEmpty)
                     } label: {
-                        Text(settings.selectedPreviewOption?.detail(for: .preview) ?? "")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        ModelDescriptionView(
+                            option: settings.selectedPreviewOption,
+                            role: .preview
+                        )
                     }
                 }
 
                 Picker("Final", selection: $settings.finalModelID) {
                     ForEach(settings.finalOptions) { option in
-                        Text(option.name).tag(option.id)
+                        Text(modelPickerLabel(option)).tag(option.id)
                     }
                 }
                 .disabled(environment.appModel.isRecording)
@@ -102,9 +104,10 @@ struct SettingsView: View {
                     }
                     .disabled(environment.appModel.isRecording || modelManagement.activeOperationID != nil || settings.finalModelID.isEmpty)
                 } label: {
-                    Text(settings.selectedFinalOption?.detail(for: .final) ?? "")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    ModelDescriptionView(
+                        option: settings.selectedFinalOption,
+                        role: .final
+                    )
                 }
 
                 if let status = modelManagement.statusMessage {
@@ -113,7 +116,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Text("Model downloads happen here. Starting a dictation only loads models already present in FluidAudio’s local cache.")
+                Text("Model downloads happen here. Starting a dictation only loads models already present in FluidAudio’s local cache. Speed and accuracy are coarse relative ratings, not cross-hardware benchmark scores.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -191,5 +194,28 @@ struct SettingsView: View {
             accessibilityGranted = AXIsProcessTrusted()
             postEventGranted = CGPreflightPostEventAccess()
         }
+    }
+
+    private func modelPickerLabel(_ option: ASRModelOption) -> String {
+        guard let performance = option.performance else { return option.name }
+        return "\(option.name) · \(performance.speedDisplayName) · \(performance.accuracyDisplayName) accuracy"
+    }
+}
+
+private struct ModelDescriptionView: View {
+    let option: ASRModelOption?
+    let role: ASRModelOption.Role
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            if let detail = option?.detail(for: role), !detail.isEmpty {
+                Text(detail)
+            }
+            if let performance = option?.performance {
+                Text(performance.summary)
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 }
