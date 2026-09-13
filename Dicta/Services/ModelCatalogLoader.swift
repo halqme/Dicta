@@ -1,6 +1,6 @@
 import Foundation
 
-/// Loads the bundled model catalog, prefers the last-known-good remote copy at startup, and
+/// Loads the bundled model catalog, prefers a newer last-known-good remote copy at startup, and
 /// refreshes that cache for the next launch. Catalog updates deliberately do not mutate the live
 /// settings/ASR graph while Dicta is running.
 nonisolated enum ModelCatalogLoader {
@@ -23,14 +23,15 @@ nonisolated enum ModelCatalogLoader {
     }
 
     static func loadStartupCatalog() -> ModelCatalog {
-        if let cached = loadCachedCatalog() {
-            return cached
+        let bundled = loadBundledCatalog()
+        guard let cached = loadCachedCatalog(), cached.revision > bundled.revision else {
+            return bundled
         }
-        return loadBundledCatalog()
+        return cached
     }
 
-    /// Fetch and validate the canonical manifest. A failed request, unsupported schema, or invalid
-    /// catalog leaves the previous cache untouched.
+    /// Fetch and validate the canonical manifest. A failed request, unsupported schema, stale
+    /// revision, or invalid catalog leaves the previous cache untouched.
     static func refreshCache() async {
         var request = URLRequest(
             url: remoteURL,
@@ -43,12 +44,16 @@ nonisolated enum ModelCatalogLoader {
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
 
-            _ = try decodeCatalog(data)
+            let remote = try decodeCatalog(data)
+            let bundledRevision = loadBundledCatalog().revision
+            let cachedRevision = loadCachedCatalog()?.revision ?? -1
+            guard remote.revision > max(bundledRevision, cachedRevision) else { return }
+
             let destination = try cacheURL(createParent: true)
             try data.write(to: destination, options: .atomic)
         } catch {
             // Remote catalog refresh is best-effort. The bundled or last-known-good catalog remains
-            // authoritative until a complete, valid replacement has been written atomically.
+            // authoritative until a complete, valid, newer replacement has been written atomically.
         }
     }
 
