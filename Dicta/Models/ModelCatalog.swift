@@ -196,16 +196,16 @@ nonisolated struct ModelRuntimeCapabilities: Sendable {
     ]
 
     func supports(_ option: ASRModelOption) -> Bool {
-        switch option.backend.kind {
-        case .cohereTranscribe:
-            option.backend.variantID == nil
-        case .parakeet:
-            option.backend.variantID.map(Self.parakeetVariants.contains) ?? false
-        case .streaming:
-            option.backend.variantID.map(Self.streamingVariants.contains) ?? false
-        default:
-            false
+        if option.backend.kind == .cohereTranscribe {
+            return option.backend.variantID == nil
         }
+        if option.backend.kind == .parakeet {
+            return option.backend.variantID.map(Self.parakeetVariants.contains) ?? false
+        }
+        if option.backend.kind == .streaming {
+            return option.backend.variantID.map(Self.streamingVariants.contains) ?? false
+        }
+        return false
     }
 }
 
@@ -410,9 +410,12 @@ nonisolated struct ModelCatalog: Codable, Sendable {
                 throw ValidationError.backendVariantRequired(model.id)
             }
 
-            if let performance = model.performance,
-               !(1...5).contains(performance.speed) || !(1...5).contains(performance.accuracy) {
-                throw ValidationError.invalidPerformance(modelID: model.id)
+            if let performance = model.performance {
+                guard (1...5).contains(performance.speed),
+                      (1...5).contains(performance.accuracy)
+                else {
+                    throw ValidationError.invalidPerformance(modelID: model.id)
+                }
             }
         }
     }
