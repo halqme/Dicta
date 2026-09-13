@@ -55,7 +55,7 @@ private extension InputLanguage {
         switch self {
         case .english:
             .english
-        case .japanese, .automatic:
+        case .japanese, .chinese, .automatic:
             nil
         }
     }
@@ -66,6 +66,8 @@ private extension InputLanguage {
             .japanese
         case .english:
             .english
+        case .chinese:
+            .chinese
         case .automatic:
             nil
         }
@@ -87,10 +89,11 @@ actor ASRService {
         case cohere(CoherePipeline, CoherePipeline.LoadedModels)
         case parakeet(AsrManager)
         case streaming(any StreamingAsrManager)
+        case additional(any FinalASRRuntime)
     }
 
-    /// Backends currently implemented by the FluidAudio adapter. The catalog itself remains open
-    /// to other backend identifiers and they fail as unsupported only when selected.
+    /// Backends implemented through Dicta's original FluidAudio adapters. Standalone managers that
+    /// use different APIs are routed through `AdditionalASRAdapter`.
     private enum SupportedBackendKind: String {
         case cohereTranscribe = "cohere-transcribe"
         case parakeet
@@ -121,6 +124,12 @@ actor ASRService {
         guard let option = modelCatalog.finalOption(id: modelID) else {
             throw ASRServiceError.unsupportedFinalModel(modelID: modelID)
         }
+
+        if AdditionalASRAdapter.supportedBackendKinds.contains(option.backend.kind.rawValue) {
+            try await AdditionalASRAdapter.install(option)
+            return
+        }
+
         guard let backendKind = Self.supportedBackendKind(from: option) else {
             throw ASRServiceError.unsupportedFinalModel(modelID: modelID)
         }
@@ -234,6 +243,12 @@ actor ASRService {
             throw ASRServiceError.unsupportedFinalModel(modelID: modelID)
         }
         try Self.validateLanguage(model: option, language: language)
+
+        if AdditionalASRAdapter.supportedBackendKinds.contains(option.backend.kind.rawValue) {
+            try AdditionalASRAdapter.preflight(option)
+            return
+        }
+
         guard let backendKind = Self.supportedBackendKind(from: option) else {
             throw ASRServiceError.unsupportedFinalModel(modelID: modelID)
         }
@@ -375,6 +390,9 @@ actor ASRService {
                 try? await manager.reset()
                 throw error
             }
+
+        case .additional(let runtime):
+            text = try await runtime.transcribe(samples: samples, language: session.language)
         }
 
         let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -444,6 +462,11 @@ actor ASRService {
         guard let option = modelCatalog.finalOption(id: modelID) else {
             throw ASRServiceError.unsupportedFinalModel(modelID: modelID)
         }
+
+        if AdditionalASRAdapter.supportedBackendKinds.contains(option.backend.kind.rawValue) {
+            return .additional(try await AdditionalASRAdapter.load(option))
+        }
+
         guard let backendKind = Self.supportedBackendKind(from: option) else {
             throw ASRServiceError.unsupportedFinalModel(modelID: modelID)
         }
@@ -563,6 +586,8 @@ actor ASRService {
             await manager.cleanup()
         case .streaming(let manager):
             await manager.cleanup()
+        case .additional(let runtime):
+            await runtime.cleanup()
         }
     }
 
