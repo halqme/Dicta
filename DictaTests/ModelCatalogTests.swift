@@ -120,10 +120,13 @@ func bundledCatalogPreservesDefaultsAndSeparatesCatalogFromRuntimeCapabilities()
     let runnableJapanese = Set(catalog.runnableFinalOptions(for: .japanese).map(\.id))
     #expect(runnableJapanese == ["cohere-transcribe", "parakeet-ja"])
 
+    let runnableEnglish = Set(catalog.runnableFinalOptions(for: .english).map(\.id))
+    #expect(runnableEnglish.contains("parakeet-tdt-ctc-110m"))
+    #expect(runnableEnglish.contains("nemotron-2240ms"))
+    #expect(runnableEnglish.contains("parakeet-unified-offline-15s"))
+
     #expect(catalog.finalOptions(for: .japanese).contains { $0.id == "sensevoice-small" })
     #expect(!catalog.runnableFinalOptions(for: .japanese).contains { $0.id == "sensevoice-small" })
-    #expect(catalog.finalOptions(for: .english).contains { $0.id == "parakeet-tdt-ctc-110m" })
-    #expect(!catalog.runnableFinalOptions(for: .english).contains { $0.id == "parakeet-tdt-ctc-110m" })
 
     #expect(catalog.model(id: "cohere-transcribe")?.performance?.accuracy == 5)
     #expect(catalog.model(id: "parakeet-eou-160ms")?.performance?.speed == 5)
