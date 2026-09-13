@@ -214,9 +214,9 @@ enum AdditionalASRAdapter {
     nonisolated static func storageDirectory(for option: ASRModelOption) -> URL? {
         switch option.backend.kind.rawValue {
         case "sensevoice":
-            MLModelConfigurationUtils.defaultModelsDirectory(for: .senseVoiceSmall)
+            return MLModelConfigurationUtils.defaultModelsDirectory(for: .senseVoiceSmall)
         case "paraformer":
-            MLModelConfigurationUtils.defaultModelsDirectory(for: .paraformerLargeZh)
+            return MLModelConfigurationUtils.defaultModelsDirectory(for: .paraformerLargeZh)
         case "nemotron-multilingual":
             guard let chunkMs = try? nemotronChunkMilliseconds(for: option) else { return nil }
             return nemotronMultilingualDirectory(chunkMs: chunkMs)
